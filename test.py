@@ -5,7 +5,7 @@ import aiohttp
 
 async def req():
     resp = await aiohttp.ClientSession().request(
-        "post", 'http://192.168.1.114:8080/batch_insert',
+        "post", 'http://127.0.0.1:8080/batch_insert',
         data=json.dumps({"tickets":[{
             "id": "51e91cabbc513365f132b449742220d3",
             "departure_code": "LED",
@@ -31,7 +31,7 @@ async def req():
 
 async def search():
     resp = await aiohttp.ClientSession().request(
-        "post", 'http://192.168.1.114:8080/search',
+        "post", 'http://127.0.0.1:8080/search',
         data=json.dumps({
             "departure_code": "LED",
             "arrival_code": "AER",

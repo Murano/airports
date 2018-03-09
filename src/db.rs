@@ -1,57 +1,72 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::cell::RefCell;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone,Serialize,Deserialize, Debug)]
 pub struct Ticket {
-    id: String,
-    departure_code:String,
-    arrival_code:String,
-    departure_time:i32,
-    arrival_time:i32,
-    price:f32
+    pub id: String,
+    pub departure_code:String,
+    pub arrival_code:String,
+    pub departure_time:i32,
+    pub arrival_time:i32,
+    pub price:f32
+}
+
+impl PartialEq for Ticket {
+    fn eq(&self, other: &Ticket) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Ticket {}
+
+impl Hash for Ticket {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state)
+    }
 }
 
 #[derive(Debug)]
 pub struct Airport {
-    directions: RefCell<Vec<Ticket>>
+    directions: RefCell<HashSet<Ticket>>
 }
 
 
 impl Airport {
     fn init() -> Airport {
         Airport{
-            directions: RefCell::new(vec![])
+            directions: RefCell::new(HashSet::new())
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Database {
-    pub airports: RefCell<HashMap<String, Airport>>
+    pub airports: RefCell<HashMap<String, Airport>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct TicketsInsertRequest {
     pub tickets: Vec<Ticket>
 }
 
 #[derive(Clone,Serialize,Deserialize)]
 pub struct SearchRequest {
-    departure_code: String,
-    arrival_code: String,
-    departure_time_start: i32,
-    departure_time_end: i32
+    pub departure_code: String,
+    pub arrival_code: String,
+    pub departure_time_start: i32,
+    pub departure_time_end: i32
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Solution {
     ticket_ids: RefCell<Vec<String>>,
     price: f32
 }
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct Solutions {
     solutions: RefCell<Vec<Solution>>
 }
@@ -69,23 +84,34 @@ impl Solutions {
 
 impl Database {
 
+    pub fn init() -> Database {
+        Database{
+            airports: RefCell::new(HashMap::new()),
+        }
+    }
+
     pub fn insert_tickets(&self, tickets: Vec<Ticket>) -> () {
+
         for ticket in &tickets {
-            match self.airports.borrow_mut().entry(ticket.arrival_code.clone()) {
-                Entry::Occupied(o) => o.get().directions.borrow_mut().push(ticket.to_owned()),
+
+            match self.airports.borrow_mut().entry(ticket.departure_code.clone()) {
+                Entry::Occupied(o) => {
+                    o.get().directions.borrow_mut().insert(ticket.to_owned());
+                },
                 Entry::Vacant(v) => {
                     let airport = Airport::init();
-                    airport.directions.borrow_mut().push(ticket.to_owned());
+                    airport.directions.borrow_mut().insert(ticket.to_owned());
                     v.insert(airport);
                 }
             }
 
         }
-//        println!("{:?}", self.airports);
+        println!("Inserted {:?}", self.airports);
     }
 
     pub fn search_flights<'a>(&self, req: &SearchRequest) -> Result<Solutions, &'a str> {
-//        println!("{:?}", self.airports);
+        println!("{}", &req.departure_code);
+        println!("Search {:?}", self.airports);
         match self.airports.borrow().get(&req.departure_code) {
             Some(airport_ref) => {
                 let solutions = self.check_tickets(req, airport_ref, None);

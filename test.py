@@ -24,7 +24,7 @@ async def req():
                 "price": 2000
             }]}),
         headers={"content-type": "application/json"})
-    print(str(resp))
+    # print(str(resp))
     print(await resp.text())
     # assert 200 == resp.status
 
@@ -45,4 +45,4 @@ async def search():
 
 
 asyncio.get_event_loop().run_until_complete(req())
-asyncio.get_event_loop().run_until_complete(search())
+# asyncio.get_event_loop().run_until_complete(search())

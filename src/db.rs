@@ -46,7 +46,7 @@ pub struct Database {
     pub airports: RefCell<HashMap<String, Airport>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TicketsInsertRequest {
     pub tickets: Vec<Ticket>
 }
@@ -110,7 +110,7 @@ impl Database {
     }
 
     pub fn search_flights<'a>(&self, req: &SearchRequest) -> Result<Solutions, &'a str> {
-        println!("{}", &req.departure_code);
+
         println!("Search {:?}", self.airports);
         match self.airports.borrow().get(&req.departure_code) {
             Some(airport_ref) => {

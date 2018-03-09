@@ -7,7 +7,7 @@ extern crate serde_json;
 extern crate env_logger;
 use actix::*;
 use actix_web::*;
-use futures::Future;
+use futures::{Future, Stream};
 use std::collections::HashMap;
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
@@ -18,7 +18,7 @@ mod db;
 
 #[derive(Serialize, Debug)]
 pub struct Resp {
-    status: String
+    status: &'static str
 }
 
 impl Actor for db::Database {
@@ -56,7 +56,7 @@ impl Handler<db::SearchRequest> for db::Database {
         match self.search_flights(&msg) {
             Ok(solutions) => Ok(solutions),
             Err(error) => {
-                Err(Resp { status: error.to_owned() })
+                Err(Resp { status: "failure" })
             }
         }
     }
@@ -67,31 +67,24 @@ fn index<'a>(_req: HttpRequest<actix::Addr<actix::Syn, db::Database>>) -> &'a st
 }
 
 fn batch_insert(req: HttpRequest<actix::Addr<actix::Syn, db::Database>>) -> Box<Future<Item=HttpResponse, Error=Error>> {
-//    req.state().send
-    let tkt = db::TicketsInsertRequest{
-        tickets: vec![db::Ticket{
-            id: "51e91cabbc513365f132b449742220d3".to_owned(),
-            departure_code: "LED".to_owned(),
-            arrival_code: "DME".to_owned(),
-            departure_time: 1509876000,
-            arrival_time: 1509883200,
-            price: 1500.0
-        }]
-    };
-    let a = req.state().send(tkt).wait();
 
-    req.json()
-        .from_err()  // convert all errors into `Error`
-        .and_then(move|val: db::TicketsInsertRequest| {
-//            let db: &Arc<Mutex<db::Database>> = req_clone.state();
-//            db.lock().unwrap().insert_tickets(val.tickets);
-//            info!("sended {:?}", &val);
-//            req_clone.state().send(val);
+    let db_actor: actix::Addr<actix::Syn, db::Database> = req.state().clone();
 
-            let resp = Resp{status: "success".to_owned()};
-            Ok(httpcodes::HTTPOk.build().json(resp)?)  // <- send response
-        })
-        .responder()
+    req.concat2()
+        .from_err()
+        .map(move|body|{
+            let res = serde_json::from_slice::<db::TicketsInsertRequest>(&body);
+            match res {
+                Ok(ticket_insert_req) => Ok(db_actor.send(ticket_insert_req)),
+                Err(e) => Err(e)
+            }
+        }).and_then(|res| {
+            match res {
+                Ok(insert_res) => Ok(httpcodes::HttpOk.build().json(Resp { status: "success" })?),
+                Err(e) => Ok(httpcodes::HttpOk.build().json(Resp { status: "failure" })?)
+            }
+        }).responder()
+
 }
 
 fn search(req: HttpRequest<actix::Addr<actix::Syn, db::Database>>) ->Box<Future<Item=HttpResponse, Error=Error>> {

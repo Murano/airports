@@ -106,12 +106,11 @@ impl Database {
             }
 
         }
-        println!("Inserted {:?}", self.airports);
+//        println!("Inserted {:?}", self.airports);
     }
 
     pub fn search_flights<'a>(&self, req: &SearchRequest) -> Result<Solutions, &'a str> {
 
-        println!("Search {:?}", self.airports);
         match self.airports.borrow().get(&req.departure_code) {
             Some(airport_ref) => {
                 let solutions = self.check_tickets(req, airport_ref, None);
@@ -142,7 +141,7 @@ impl Database {
 
                     //есть вероятность того что этот билет приведет туда где найдутся варианты для стыковки
                     if ticket.arrival_code != req.arrival_code {
-                        if let Some(airport_ref) = self.airports.borrow().get(&ticket.departure_code) {
+                        if let Some(airport_ref) = self.airports.borrow().get(&ticket.arrival_code) {
                             let solutions_1 = self.check_tickets(req, airport_ref, Some(RefCell::new(vec![ticket.clone()])));
                             solutions.merge(solutions_1)
                         }
@@ -164,9 +163,11 @@ impl Database {
 
                     //проверяем билет по критерию времени пересадки 3<t<8
 
-                    let last_ticket = tickets_chain.borrow().last().unwrap().to_owned();
-
-                    if last_ticket.arrival_time + 3 * 60 * 60 > ticket.departure_time  || ticket.departure_time > last_ticket.arrival_time + 3 * 60 * 60 {
+                    let prev_ticket = tickets_chain.borrow().last().unwrap().to_owned();
+//                    println!("Prev {:?}", prev_ticket);
+//                    println!("Current {:?}", ticket);
+                    if prev_ticket.arrival_time + 3 * 60 * 60 > ticket.departure_time  ||
+                        ticket.departure_time > prev_ticket.arrival_time + 8 * 60 * 60 {
                         continue; //билет не подходит ни для стыковки ни для дальнейших поисков
                     }
 
